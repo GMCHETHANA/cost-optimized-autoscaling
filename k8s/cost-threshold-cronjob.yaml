@@ -1,0 +1,26 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: scale-by-cost
+spec:
+  schedule: "0 */2 * * *" # Every 2 hours
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: cost-scaler
+            image: bitnami/kubectl:latest
+            command:
+            - /bin/sh
+            - -c
+            - |
+              CURRENT=$(kubectl get deployment web-app -o jsonpath='{.spec.replicas}')
+              MAX_ALLOWED=3
+              if [ "$CURRENT" -gt "$MAX_ALLOWED" ]; then
+                kubectl scale deployment web-app --replicas=$MAX_ALLOWED
+                echo "Scaled down to $MAX_ALLOWED replicas due to cost threshold"
+              else
+                echo "No scaling needed"
+              fi
+          restartPolicy: OnFailure
